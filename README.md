@@ -46,6 +46,34 @@ schtasks /Create /SC DAILY /ST 09:00 /TN fitbit_reader_sync /TR "\"C:\Users\gric
 
 Il log viene scritto in `logs\sync.log`.
 
+## Installazione su un nuovo PC
+
+Git porta solo il codice. Credenziali, token, ambiente Python, dati e
+pianificazione vanno ricreati o copiati a mano.
+
+1. Installa **Python 3.10 o più recente** da python.org. L'installer include il
+   comando `py`, usato da `setup_env.bat`.
+2. Clona il repo e lancia `setup_env.bat`. Ricrea `.venv`, che non si copia
+   perché contiene percorsi validi solo sul PC dove è stato creato.
+3. Copia `client_secret.json` nella cartella del progetto.
+4. Lancia `fitbit.bat auth`. Il token (`.secrets\token.json`) non è nel repo e
+   va rifatto su ogni PC.
+5. **Dati:** l'archivio `data\` (con `state.json`) non è nel repo. Puoi:
+   - copiare `data\` dal vecchio PC, così il sync riprende da dove era rimasto;
+   - oppure riscaricare lo storico, che resta su Google:
+     `fitbit.bat sync --since <data>`. Senza `--since` il primo sync prende
+     solo gli ultimi 30 giorni.
+6. **Scarico automatico:** la pianificazione è un'impostazione di Windows e va
+   ricreata. Dal prompt dei comandi (cmd), nella cartella del progetto:
+
+   ```bat
+   schtasks /Create /SC DAILY /ST 09:00 /TN fitbit_reader_sync /TR "\"%CD%\sync_daily.bat\""
+   ```
+
+Se usi più PC in parallelo, ognuno tiene un archivio separato. Conviene sceglierne
+uno principale, oppure mettere `data\` in una cartella sincronizzata (per esempio
+OneDrive) e usare `--data-dir`.
+
 ## Archivio (`data\`)
 
 ```
