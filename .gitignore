@@ -1,0 +1,13 @@
+# Credenziali e token OAuth: non vanno MAI su git
+client_secret*.json
+.secrets/
+
+# Dati scaricati e log
+data/
+logs/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc

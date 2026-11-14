@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fitbit_reader"
+version = "0.1.0"
+description = "Scarico giornaliero dei dati Fitbit (Charge 5) tramite Google Health API in un archivio locale"
+requires-python = ">=3.10"
+dependencies = [
+    "google-auth>=2.30",
+    "google-auth-oauthlib>=1.2",
+    "requests>=2.31",
+]
+
+[project.scripts]
+fitbit_reader = "fitbit_reader.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

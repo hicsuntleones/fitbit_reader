@@ -1,2 +1,64 @@
 # fitbit_reader
-Read data from fitbit sensor
+
+Scarico giornaliero dei dati di un Fitbit Charge 5 tramite la **Google Health API**
+in un archivio locale, per analisi con algoritmi propri.
+
+## Cosa scarica
+
+| Tipo | Contenuto |
+|---|---|
+| `heart-rate` | battito ogni pochi secondi, con contesto di movimento |
+| `heart-rate-variability`, `daily-heart-rate-variability` | HRV (RMSSD) |
+| `oxygen-saturation`, `daily-oxygen-saturation` | SpO2 |
+| `daily-resting-heart-rate` | battito a riposo |
+| `daily-sleep-temperature-derivations` | temperatura notturna della pelle |
+| `steps`, `active-minutes`, `active-zone-minutes`, `distance`, `sedentary-period`, `exercise` | attività |
+| `sleep` | sessioni di sonno con fasi |
+| `electrocardiogram` | registrazioni ECG con forma d'onda (lead I) |
+
+Elenco completo: `fitbit.bat types`.
+
+## Installazione (una volta)
+
+1. Metti il file delle credenziali OAuth (client "App desktop") in
+   `client_secret.json` nella cartella del progetto. È escluso da git.
+2. `setup_env.bat` crea `.venv` e installa il pacchetto.
+3. `fitbit.bat auth` apre il browser per il consenso e salva il token in
+   `.secrets\token.json`, anche questo escluso da git.
+4. `fitbit.bat check` verifica il collegamento a Google Health e mostra i dispositivi.
+
+## Uso
+
+```bat
+fitbit.bat sync                        :: giorni mancanti (al primo avvio: ultimi 30 giorni)
+fitbit.bat sync --since 2024-01-01     :: scarica lo storico da una data
+fitbit.bat sync --types heart-rate sleep
+```
+
+Ogni sync riscarica anche gli ultimi 3 giorni, per raccogliere i dati che il
+braccialetto ha sincronizzato in ritardo. Il giorno corrente è sempre parziale.
+
+### Scarico automatico giornaliero
+
+```bat
+schtasks /Create /SC DAILY /ST 09:00 /TN fitbit_reader_sync /TR "\"C:\Users\gricc\dev\fitbit_reader\sync_daily.bat\""
+```
+
+Il log viene scritto in `logs\sync.log`.
+
+## Archivio (`data\`)
+
+```
+data\state.json                            ultimo giorno completo per ogni tipo
+data\raw\<tipo>\<anno>\<YYYY-MM-DD>.json   risposta API integrale (fonte di verità)
+data\csv\<tipo>\<anno>\<YYYY-MM-DD>.csv    stessi dati appiattiti
+data\ecg\<anno>\<timestamp>_<id>.json      registrazione ECG integrale
+data\ecg\<anno>\<timestamp>_<id>.csv       forma d'onda: t_s, mV, raw
+```
+
+## Note
+
+- Finché l'app OAuth è in stato **Test**, Google fa scadere il token dopo 7 giorni.
+  Pubblicala (Google Auth Platform → Pubblico → Pubblica app) per evitarlo.
+- L'ECG va avviato a mano sul braccialetto: l'API serve solo a leggere.
+- I dati EDA non sono esposti dalla Google Health API.
