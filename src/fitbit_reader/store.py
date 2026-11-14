@@ -50,13 +50,15 @@ class Store:
         write_csv(self.root / "csv" / data_type / year / f"{day.isoformat()}.csv", points)
 
     # ---- ECG ------------------------------------------------------------
-    def write_ecg(self, point: dict) -> Path:
+    def write_ecg(self, point: dict) -> bool:
+        """Salva una registrazione ECG. Restituisce True se non era già in archivio."""
         ecg = point.get("electrocardiogram", {})
         start = ecg.get("interval", {}).get("startTime", "unknown")
         point_id = point.get("name", "").rsplit("/", 1)[-1] or "noid"
         # gli ID possono contenere ':' (es. '2026-11-15T00:26:07.125'), vietati su Windows
         stem = _safe_name(f"{start.replace(':', '').replace('-', '')}_{point_id}")
         folder = self.root / "ecg" / (start[:4] if start[:4].isdigit() else "unknown")
+        is_new = not (folder / f"{stem}.json").exists()
         _atomic_write(folder / f"{stem}.json", json.dumps(point, ensure_ascii=False, indent=2))
 
         samples = ecg.get("waveformSamples") or []
@@ -70,7 +72,7 @@ class Store:
                 for i, s in enumerate(samples):
                     w.writerow([f"{i / fs:.6f}", f"{s / scale:.6f}", s])
             os.replace(tmp, folder / f"{stem}.csv")
-        return folder / f"{stem}.json"
+        return is_new
 
 
 def flatten(obj, prefix: str = "") -> dict:

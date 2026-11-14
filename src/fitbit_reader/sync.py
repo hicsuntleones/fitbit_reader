@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .api import ApiError, HealthApi
 from .datatypes import DATA_TYPES, DataType
@@ -14,6 +14,7 @@ log = logging.getLogger("fitbit_reader")
 # Il Charge 5 può sincronizzare col telefono con ritardo: ogni volta riscarichiamo
 # anche gli ultimi giorni già "completi" per raccogliere i dati arrivati tardi.
 OVERLAP_DAYS = 3
+ECG_OVERLAP_DAYS = 7
 DEFAULT_FIRST_RUN_DAYS = 30
 
 
@@ -78,18 +79,23 @@ def _sync_ecg(api, store, state, since) -> None:
     if since:
         start = f"{since.isoformat()}T00:00:00Z"
     elif last:
-        start = last
+        # ricontrolla anche gli ultimi giorni: un ECG fatto offline può arrivare in ritardo
+        back = datetime.fromisoformat(last.replace("Z", "+00:00")) - timedelta(days=ECG_OVERLAP_DAYS)
+        start = back.strftime("%Y-%m-%dT%H:%M:%SZ")
     else:
         start = f"{(date.today() - timedelta(days=DEFAULT_FIRST_RUN_DAYS)).isoformat()}T00:00:00Z"
 
     flt = f'electrocardiogram.interval.start_time >= "{start}"'
-    count = 0
+    count = new = 0
     for p in api.list_data_points("electrocardiogram", flt, 100):
-        store.write_ecg(p)
+        if store.write_ecg(p):
+            new += 1
         count += 1
         t = p.get("electrocardiogram", {}).get("interval", {}).get("startTime")
         if t and (last is None or t > last):
             last = t
     if last:
         state["electrocardiogram"] = last
-    log.info("%-36s da %s  %7d registrazioni", "electrocardiogram", start, count)
+    total = len(list((store.root / "ecg").rglob("*.json")))
+    log.info("%-36s da %s  %d trovate, %d nuove (in archivio: %d)",
+             "electrocardiogram", start, count, new, total)
