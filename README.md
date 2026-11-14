@@ -46,6 +46,27 @@ schtasks /Create /SC DAILY /ST 09:00 /TN fitbit_reader_sync /TR "\"C:\Users\gric
 
 Il log viene scritto in `logs\sync.log`.
 
+## Dashboard
+
+`dashboard.bat` apre nel browser un'interfaccia locale (Streamlit) per confrontare
+i dati tra le fasi dello studio: baseline, terapia, follow-up.
+
+| Scheda | Contenuto |
+|---|---|
+| Andamento | marcatori giornalieri con media mobile e fasi colorate sullo sfondo |
+| Confronto fasi | distribuzione per fase, Δ rispetto alla baseline, Hedges g, panoramica di tutti i marcatori |
+| Giornata | battito, fasi del sonno e passi di un giorno, eventualmente sovrapposto a un altro |
+| ECG | forma d'onda in mV con la griglia, classificazione Fitbit |
+| Fasi ed esclusioni | date delle fasi, fase di riferimento, giorni da escludere, soglia di utilizzo |
+
+I marcatori sono calcolati in `src/fitbit_reader/markers.py` e salvati nella cache
+`data/derived/markers.json`. Ogni riga corrisponde alla **data di risveglio**. Fasi ed
+esclusioni sono in `data/study.json`.
+
+L'**indice di stress composito** è sperimentale: è la media degli z-score di HRV
+notturna (invertita), battito a riposo e battito nel sonno, calcolati rispetto alla
+baseline. Positivo = più stress del solito.
+
 ## Installazione su un nuovo PC
 
 Git porta solo il codice. Credenziali, token, ambiente Python, dati e

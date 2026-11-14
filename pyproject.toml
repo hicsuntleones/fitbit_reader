@@ -13,6 +13,13 @@ dependencies = [
     "requests>=2.31",
 ]
 
+[project.optional-dependencies]
+dashboard = [
+    "streamlit>=1.40",
+    "plotly>=5.24",
+    "pandas>=2.2",
+]
+
 [project.scripts]
 fitbit_reader = "fitbit_reader.cli:main"
 
