@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -53,7 +54,8 @@ class Store:
         ecg = point.get("electrocardiogram", {})
         start = ecg.get("interval", {}).get("startTime", "unknown")
         point_id = point.get("name", "").rsplit("/", 1)[-1] or "noid"
-        stem = f"{start.replace(':', '').replace('-', '')}_{point_id}"
+        # gli ID possono contenere ':' (es. '2026-11-15T00:26:07.125'), vietati su Windows
+        stem = _safe_name(f"{start.replace(':', '').replace('-', '')}_{point_id}")
         folder = self.root / "ecg" / (start[:4] if start[:4].isdigit() else "unknown")
         _atomic_write(folder / f"{stem}.json", json.dumps(point, ensure_ascii=False, indent=2))
 
@@ -96,6 +98,11 @@ def write_csv(path: Path, points: list[dict]) -> None:
         w.writeheader()
         w.writerows(rows)
     os.replace(tmp, path)
+
+
+def _safe_name(name: str) -> str:
+    """Sostituisce i caratteri non ammessi nei nomi di file Windows."""
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", name).rstrip(". ")
 
 
 def _atomic_write(path: Path, text: str) -> None:

@@ -40,6 +40,10 @@ def sync(
         except ApiError as e:
             ok = False
             log.error("%s: errore API, salto questo tipo.\n%s", name, e)
+        except Exception:
+            # un errore imprevisto su un tipo non deve bloccare gli altri
+            ok = False
+            log.exception("%s: errore imprevisto, salto questo tipo.", name)
         store.save_state(state)
     return ok
 

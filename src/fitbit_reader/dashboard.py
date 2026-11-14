@@ -309,7 +309,9 @@ with tab_ecg:
             e = json.loads(f.read_text(encoding="utf-8")).get("electrocardiogram", {})
             iv = e.get("interval", {})
             t = local(iv["startTime"], iv.get("startUtcOffset")) if iv.get("startTime") else None
-            names[f] = f"{t:%d/%m/%Y %H:%M}  –  {e.get('resultClassification', '?')}" if t else f.stem
+            # l'API a volte non riporta il fuso orario dell'ECG: in quel caso l'ora è UTC
+            tz = "" if iv.get("startUtcOffset") else " UTC"
+            names[f] = f"{t:%d/%m/%Y %H:%M}{tz}  –  {e.get('resultClassification', '?')}" if t else f.stem
         f = st.selectbox("Registrazione", files, format_func=names.get)
         e = json.loads(f.read_text(encoding="utf-8"))["electrocardiogram"]
         samples = np.array(e.get("waveformSamples") or [], dtype=float)
