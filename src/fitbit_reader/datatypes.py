@@ -1,14 +1,14 @@
-"""Catalogo dei tipi di dato Google Health API scaricati da fitbit_reader.
+"""Catalogue of the Google Health API data types downloaded by fitbit_reader.
 
-Ogni tipo ha un "kind" che decide come costruire il filtro temporale
-(vedi https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints/list):
+Each type has a "kind" that determines how the time filter is built
+(see https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints/list):
 
-- sample   -> {campo}.sample_time.civil_time
-- interval -> {campo}.interval.civil_start_time
-- session  -> {campo}.interval.civil_start_time   (es. exercise)
-- daily    -> {campo}.date
-- sleep    -> sleep.interval.civil_end_time        (la notte appartiene al giorno del risveglio)
-- ecg      -> electrocardiogram.interval.start_time (supporta solo >=, gestito a parte)
+- sample   -> {field}.sample_time.civil_time
+- interval -> {field}.interval.civil_start_time
+- session  -> {field}.interval.civil_start_time   (e.g. exercise)
+- daily    -> {field}.date
+- sleep    -> sleep.interval.civil_end_time        (a night belongs to the wake-up day)
+- ecg      -> electrocardiogram.interval.start_time (only >= supported, handled separately)
 """
 
 from __future__ import annotations
@@ -24,18 +24,18 @@ def kebab_to_camel(name: str) -> str:
 
 @dataclass(frozen=True)
 class DataType:
-    name: str  # forma kebab-case usata nel percorso URL, es. "heart-rate"
+    name: str  # kebab-case form used in the URL path, e.g. "heart-rate"
     kind: str
     page_size: int = 10000
 
     @property
     def field(self) -> str:
-        """Nome snake_case usato nei filtri (l'API rifiuta la forma camelCase)."""
+        """snake_case name used in filters (the API rejects the camelCase form)."""
         return self.name.replace("-", "_")
 
     @property
     def json_key(self) -> str:
-        """Chiave camelCase con cui il tipo compare nel DataPoint restituito."""
+        """camelCase key under which the type appears in the returned DataPoint."""
         return kebab_to_camel(self.name)
 
     def day_filter(self, day: date) -> str:
@@ -57,7 +57,7 @@ class DataType:
 DATA_TYPES: dict[str, DataType] = {
     t.name: t
     for t in [
-        # Metriche fisiologiche (scope health_metrics_and_measurements)
+        # Physiological metrics (scope health_metrics_and_measurements)
         DataType("heart-rate", "sample"),
         DataType("heart-rate-variability", "sample"),
         DataType("oxygen-saturation", "sample"),
@@ -65,16 +65,16 @@ DATA_TYPES: dict[str, DataType] = {
         DataType("daily-oxygen-saturation", "daily"),
         DataType("daily-resting-heart-rate", "daily"),
         DataType("daily-sleep-temperature-derivations", "daily"),
-        # Attività (scope activity_and_fitness)
+        # Activity (scope activity_and_fitness)
         DataType("steps", "interval"),
         DataType("active-minutes", "interval"),
         DataType("active-zone-minutes", "interval"),
-        # total-calories e floors non supportano "list" (solo rollUp/dailyRollUp):
-        # esclusi per ora. Il Charge 5 non ha altimetro, quindi floors non ha dati.
+        # total-calories and floors don't support "list" (only rollUp/dailyRollUp):
+        # excluded for now. The Charge 5 has no altimeter, so floors has no data anyway.
         DataType("distance", "interval"),
         DataType("sedentary-period", "interval"),
         DataType("exercise", "session", page_size=25),
-        # Sonno (scope sleep)
+        # Sleep (scope sleep)
         DataType("sleep", "sleep", page_size=25),
         # ECG (scope ecg)
         DataType("electrocardiogram", "ecg"),

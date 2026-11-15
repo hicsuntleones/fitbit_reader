@@ -1,12 +1,12 @@
-"""Disegno dello studio (fasi, esclusioni) e statistiche di confronto tra fasi.
+"""Study design (phases, exclusions) and statistics to compare phases.
 
-Configurazione in data/study.json (fuori da git, modificabile dalla dashboard):
+Configuration in data/study.json (outside git, editable from the dashboard):
 
 {
   "phases": [{"name": "Baseline", "start": "2026-09-01", "end": "2026-11-30"}, ...],
   "baseline": "Baseline",
-  "split_phase": "Terapia",      # fase da suddividere in blocchi da 30 giorni
-  "min_wear_hours": 18,          # giorni con meno ore di utilizzo esclusi
+  "split_phase": "Terapia",      # phase to split into 30-day blocks
+  "min_wear_hours": 18,          # days with fewer wear hours are excluded
   "exclusions": [{"date": "2026-10-03", "reason": "febbre"}]
 }
 """
@@ -65,7 +65,7 @@ def _d(v) -> date | None:
 
 
 def defined_phases(study: dict) -> list[dict]:
-    """Fasi con date valide, eventualmente con la fase di terapia suddivisa in blocchi."""
+    """Phases with valid dates."""
     out = []
     for ph in study["phases"]:
         s, e = _d(ph.get("start")), _d(ph.get("end"))
@@ -105,7 +105,7 @@ def assign_phases(index: pd.DatetimeIndex, phases: list[dict]) -> pd.Series:
 
 
 def valid_mask(df: pd.DataFrame, study: dict) -> pd.Series:
-    """True per i giorni utilizzabili (utilizzo sufficiente e non esclusi a mano)."""
+    """True for usable days (enough wear time and not manually excluded)."""
     ok = df["wear_hours"].fillna(0) >= float(study.get("min_wear_hours", 0))
     excluded = {_d(x.get("date")) for x in study.get("exclusions", [])}
     ok &= ~pd.Series(df.index.date, index=df.index).isin(excluded)
@@ -113,11 +113,11 @@ def valid_mask(df: pd.DataFrame, study: dict) -> pd.Series:
 
 
 # ---------------------------------------------------------------------------
-# Statistiche
+# Statistics
 # ---------------------------------------------------------------------------
 def stress_index(df: pd.DataFrame, reference: pd.Series) -> pd.Series:
-    """Indice composito SPERIMENTALE: media degli z-score (rispetto ai giorni di
-    riferimento) dei componenti, orientati in modo che positivo = più stress."""
+    """EXPERIMENTAL composite index: mean of the components' z-scores (relative to the
+    reference days), oriented so that positive = more stress."""
     zs = []
     for col in STRESS_INDEX_COMPONENTS:
         ref = df.loc[reference, col].dropna()

@@ -1,8 +1,8 @@
-# Credenziali e token OAuth: non vanno MAI su git
+# OAuth credentials and tokens: NEVER commit them
 client_secret*.json
 .secrets/
 
-# Dati scaricati e log
+# Downloaded data and logs
 data/
 logs/
 

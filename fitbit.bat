@@ -1,5 +1,5 @@
 @echo off
-rem Esegue fitbit_reader con l'ambiente del progetto. Esempi:
+rem Runs fitbit_reader with the project environment. Examples:
 rem   fitbit.bat auth
 rem   fitbit.bat check
 rem   fitbit.bat sync --since 2025-01-01

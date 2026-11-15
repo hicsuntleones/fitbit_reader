@@ -1,4 +1,4 @@
-"""Client minimale per la Google Health API v4."""
+"""Minimal client for the Google Health API v4."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ class HealthApi:
         return self._get("users/me/pairedDevices")
 
     def list_data_points(self, data_type: str, filter_: str, page_size: int) -> Iterator[dict]:
-        """Restituisce tutti i data point che soddisfano il filtro, gestendo la paginazione."""
+        """Yield all data points matching the filter, handling pagination."""
         params = {"filter": filter_, "pageSize": page_size}
         while True:
             resp = self._get(f"users/me/dataTypes/{data_type}/dataPoints", params)

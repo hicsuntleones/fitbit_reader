@@ -1,4 +1,4 @@
-"""Riga di comando:  fitbit_reader {auth,check,sync,types}"""
+"""Command line:  fitbit_reader {auth,check,sync,types}"""
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def _check(api: HealthApi) -> None:
     except ApiError as e:
         if e.status != 403:
             raise
-        # L'elenco dispositivi richiede uno scope che non chiediamo: non serve per i dati.
+        # Listing devices needs a scope we don't request; it isn't needed for the data.
         print("Dispositivi: non disponibili con i permessi attuali (non serve per il sync)")
 
 

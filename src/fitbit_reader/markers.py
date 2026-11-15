@@ -1,10 +1,10 @@
-"""Marcatori giornalieri di stress / recupero ricavati dall'archivio locale.
+"""Daily stress / recovery markers derived from the local archive.
 
-Convenzione: ogni riga è una data D = giorno del risveglio. I marcatori notturni
-si riferiscono quindi alla notte che termina il mattino di D.
+Convention: each row is a date D = wake-up day. Nightly markers therefore refer
+to the night ending on the morning of D.
 
-I risultati sono salvati in data/derived/markers.csv e ricalcolati solo per le
-date i cui file sorgente sono cambiati.
+Results are cached in data/derived/markers.json and recomputed only for the
+dates whose source files have changed.
 """
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ from statistics import mean, median
 
 import pandas as pd
 
-# Descrizione dei marcatori: nome colonna -> (etichetta, unità, direzione stress)
-# direzione +1: valori più alti = più stress; -1: più bassi = più stress; 0: neutro
+# Marker description: column name -> (label, unit, stress direction)
+# direction +1: higher values = more stress; -1: lower values = more stress; 0: neutral
 MARKERS: dict[str, tuple[str, str, int]] = {
     "hrv_rmssd": ("HRV notturna (RMSSD)", "ms", -1),
     "hrv_deep_rmssd": ("HRV sonno profondo (RMSSD)", "ms", -1),
@@ -40,7 +40,7 @@ MARKERS: dict[str, tuple[str, str, int]] = {
     "wear_hours": ("Ore di utilizzo", "h", 0),
 }
 
-# Marcatori che entrano nell'indice composito (sperimentale)
+# Markers included in the (experimental) composite index
 STRESS_INDEX_COMPONENTS = ["hrv_rmssd", "rhr", "hr_sleep_mean"]
 
 CACHE_VERSION = 1
@@ -57,7 +57,7 @@ _DAILY_SOURCES = [
 
 
 # ---------------------------------------------------------------------------
-# Lettura archivio
+# Archive reading
 # ---------------------------------------------------------------------------
 def raw_path(data_dir: Path, data_type: str, day: date) -> Path:
     return data_dir / "raw" / data_type / str(day.year) / f"{day.isoformat()}.json"
@@ -78,7 +78,7 @@ def available_days(data_dir: Path, data_type: str = "heart-rate") -> list[date]:
 
 
 def utc(ts: str) -> datetime:
-    """'2026-11-13T02:06:00Z' (eventualmente con frazioni) -> datetime UTC naive."""
+    """'2026-11-13T02:06:00Z' (optionally with fractions) -> naive UTC datetime."""
     return datetime.fromisoformat(ts.replace("Z", "+00:00")).replace(tzinfo=None)
 
 
@@ -91,7 +91,7 @@ def local(ts: str, off: str | None) -> datetime:
 
 
 def main_sleep(points: list[dict]) -> dict | None:
-    """Sessione di sonno principale (non pisolino, la più lunga)."""
+    """Main sleep session (not a nap, the longest one)."""
     sessions = [p["sleep"] for p in points if "sleep" in p]
     main = [s for s in sessions if s.get("metadata", {}).get("mainSleep")]
     if not main:
@@ -109,7 +109,7 @@ def _num(v):
 
 
 # ---------------------------------------------------------------------------
-# Calcolo marcatori di un giorno
+# Markers for a single day
 # ---------------------------------------------------------------------------
 def day_markers(data_dir: Path, day: date) -> dict:
     m: dict = {"date": day.isoformat()}
@@ -121,7 +121,7 @@ def day_markers(data_dir: Path, day: date) -> dict:
         h = p["dailyHeartRateVariability"]
         m["hrv_rmssd"] = _num(h.get("averageHeartRateVariabilityMilliseconds"))
         deep = _num(h.get("deepSleepRootMeanSquareOfSuccessiveDifferencesMilliseconds"))
-        m["hrv_deep_rmssd"] = deep if deep else None  # 0 = non calcolato
+        m["hrv_deep_rmssd"] = deep if deep else None  # 0 = not computed
         m["hr_nonrem"] = _num(h.get("nonRemHeartRateBeatsPerMinute"))
         m["hrv_entropy"] = _num(h.get("entropy"))
 
@@ -134,7 +134,7 @@ def day_markers(data_dir: Path, day: date) -> dict:
     for p in load_points(data_dir, "daily-oxygen-saturation", day):
         m["spo2_avg"] = _num(p["dailyOxygenSaturation"].get("averagePercentage"))
 
-    # --- sonno principale ---
+    # --- main sleep ---
     sleep = main_sleep(load_points(data_dir, "sleep", day))
     start = end = None
     if sleep:
@@ -156,7 +156,7 @@ def day_markers(data_dir: Path, day: date) -> dict:
         h = onset.hour + onset.minute / 60
         m["sleep_onset_h"] = h if h >= 12 else h + 24  # 23:30 -> 23.5, 01:00 -> 25.0
 
-    # --- battito: utilizzo del giorno e valori durante il sonno ---
+    # --- heart rate: daily wear time and values during sleep ---
     hr_today = load_points(data_dir, "heart-rate", day)
     minutes = {p["heartRate"]["sampleTime"]["physicalTime"][:16] for p in hr_today}
     m["wear_hours"] = len(minutes) / 60 if hr_today else 0.0
@@ -170,7 +170,7 @@ def day_markers(data_dir: Path, day: date) -> dict:
         ]
         if bpm:
             m["hr_sleep_mean"] = mean(bpm)
-            # minimo robusto: mediana del 5% più basso
+            # robust minimum: median of the lowest 5%
             low = sorted(bpm)[: max(1, len(bpm) // 20)]
             m["hr_sleep_min"] = median(low)
 
@@ -202,7 +202,7 @@ def _sources_mtime(data_dir: Path, day: date) -> float:
 
 
 def build_markers(data_dir: Path, progress=None) -> pd.DataFrame:
-    """Restituisce il DataFrame dei marcatori (indice: data), aggiornando la cache."""
+    """Return the markers DataFrame (index: date), updating the cache."""
     cache_path = data_dir / "derived" / "markers.json"
     cache: dict = {}
     if cache_path.exists():
@@ -231,6 +231,6 @@ def build_markers(data_dir: Path, progress=None) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date").sort_index()
     df = df.reindex(columns=list(MARKERS)).astype(float)
-    # giorni senza alcun dato (braccialetto mai indossato o prima dell'inizio dell'archivio)
+    # days without any data (band never worn, or before the archive starts)
     empty = (df["wear_hours"].fillna(0) == 0) & df.drop(columns=["wear_hours", "steps"]).isna().all(axis=1)
     return df[~empty]

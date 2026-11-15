@@ -1,5 +1,5 @@
 @echo off
-rem Crea l'ambiente Python (.venv) e installa fitbit_reader. Da eseguire una volta.
+rem Creates the Python environment (.venv) and installs fitbit_reader. Run once.
 cd /d "%~dp0"
 if not exist .venv (
     py -3 -m venv .venv || exit /b 1

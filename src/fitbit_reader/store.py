@@ -1,12 +1,12 @@
-"""Archivio locale.
+"""Local archive.
 
-Struttura:
+Layout:
     data/
-      state.json                              ultimo giorno completo per ogni tipo
-      raw/<tipo>/<anno>/<YYYY-MM-DD>.json     risposta API integrale (fonte di verità)
-      csv/<tipo>/<anno>/<YYYY-MM-DD>.csv      stessa cosa appiattita, per l'analisi
-      ecg/<anno>/<timestamp>_<id>.json        registrazione ECG integrale
-      ecg/<anno>/<timestamp>_<id>.csv         forma d'onda: t_s, mV
+      state.json                              last complete day for each type
+      raw/<type>/<year>/<YYYY-MM-DD>.json     full API response (source of truth)
+      csv/<type>/<year>/<YYYY-MM-DD>.csv      same data flattened, for analysis
+      ecg/<year>/<timestamp>_<id>.json        full ECG recording
+      ecg/<year>/<timestamp>_<id>.csv         waveform: t_s, mV, raw
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class Store:
         self.root = root
         self.state_path = root / "state.json"
 
-    # ---- stato ----------------------------------------------------------
+    # ---- state ----------------------------------------------------------
     def load_state(self) -> dict:
         if self.state_path.exists():
             return json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -33,7 +33,7 @@ class Store:
     def save_state(self, state: dict) -> None:
         _atomic_write(self.state_path, json.dumps(state, indent=2, sort_keys=True))
 
-    # ---- dati giornalieri -----------------------------------------------
+    # ---- daily data -----------------------------------------------------
     def write_day(self, data_type: str, day: date, points: list[dict]) -> None:
         year = str(day.year)
         payload = {
@@ -51,11 +51,11 @@ class Store:
 
     # ---- ECG ------------------------------------------------------------
     def write_ecg(self, point: dict) -> bool:
-        """Salva una registrazione ECG. Restituisce True se non era già in archivio."""
+        """Save an ECG recording. Return True if it was not already archived."""
         ecg = point.get("electrocardiogram", {})
         start = ecg.get("interval", {}).get("startTime", "unknown")
         point_id = point.get("name", "").rsplit("/", 1)[-1] or "noid"
-        # gli ID possono contenere ':' (es. '2026-11-15T00:26:07.125'), vietati su Windows
+        # IDs may contain ':' (e.g. '2026-11-15T00:26:07.125'), forbidden on Windows
         stem = _safe_name(f"{start.replace(':', '').replace('-', '')}_{point_id}")
         folder = self.root / "ecg" / (start[:4] if start[:4].isdigit() else "unknown")
         is_new = not (folder / f"{stem}.json").exists()
@@ -76,7 +76,7 @@ class Store:
 
 
 def flatten(obj, prefix: str = "") -> dict:
-    """Appiattisce un DataPoint: dizionari annidati -> chiavi col punto, liste -> JSON."""
+    """Flatten a DataPoint: nested dicts -> dotted keys, lists -> JSON."""
     out: dict = {}
     if isinstance(obj, dict):
         for k, v in obj.items():
@@ -103,7 +103,7 @@ def write_csv(path: Path, points: list[dict]) -> None:
 
 
 def _safe_name(name: str) -> str:
-    """Sostituisce i caratteri non ammessi nei nomi di file Windows."""
+    """Replace characters that are not allowed in Windows file names."""
     return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", name).rstrip(". ")
 
 

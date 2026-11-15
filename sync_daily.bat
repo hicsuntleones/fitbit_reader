@@ -1,6 +1,6 @@
 @echo off
-rem Scarico giornaliero, pensato per l'Utilita' di pianificazione di Windows.
-rem Il log viene aggiunto a logs\sync.log
+rem Daily download, meant for the Windows Task Scheduler.
+rem The log is appended to logs\sync.log
 cd /d "%~dp0"
 if not exist logs mkdir logs
 echo ===== %date% %time% ===== >> logs\sync.log

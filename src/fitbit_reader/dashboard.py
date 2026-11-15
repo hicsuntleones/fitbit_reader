@@ -1,6 +1,6 @@
-"""Dashboard Streamlit per esplorare e confrontare i dati per fasi dello studio.
+"""Streamlit dashboard to explore the data and compare it across study phases.
 
-Avvio:  dashboard.bat   (oppure  python -m streamlit run src/fitbit_reader/dashboard.py)
+Run:  dashboard.bat   (or  python -m streamlit run src/fitbit_reader/dashboard.py)
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ STRESS = "stress_index"
 LABELS = {STRESS: ("Indice di stress composito (sperimentale)", "z", +1)} | MARKERS
 STAGE_LEVEL = {"DEEP": 0, "LIGHT": 1, "REM": 2, "AWAKE": 3}
 STAGE_NAMES = ["Profondo", "Leggero", "REM", "Sveglio"]
-REF_DAY = date(2000, 1, 2)  # asse "ora del giorno" comune per sovrapporre giorni diversi
+REF_DAY = date(2000, 1, 2)  # shared "time of day" axis to overlay different days
 
 st.set_page_config(page_title="fitbit_reader", layout="wide")
 
@@ -55,13 +55,13 @@ def get_markers(_stamp: float) -> pd.DataFrame:
 
 
 def data_stamp() -> float:
-    """Cambia quando arrivano nuovi dati (invalida la cache di Streamlit)."""
+    """Changes when new data arrives (invalidates the Streamlit cache)."""
     st_file = DATA_DIR / "state.json"
     return st_file.stat().st_mtime if st_file.exists() else 0.0
 
 
 # ---------------------------------------------------------------------------
-# Caricamento
+# Loading
 # ---------------------------------------------------------------------------
 if not (DATA_DIR / "raw").exists():
     st.error(f"Nessun dato in {DATA_DIR.resolve()}. Esegui prima  fitbit.bat sync")
@@ -118,7 +118,7 @@ def add_phase_bands(fig, rows: int, annotate: bool = True):
 
 
 # ---------------------------------------------------------------------------
-# Andamento
+# Trends
 # ---------------------------------------------------------------------------
 with tab_trend:
     c1, c2, c3 = st.columns([4, 1, 1])
@@ -171,7 +171,7 @@ with tab_trend:
         )
 
 # ---------------------------------------------------------------------------
-# Confronto fasi
+# Phase comparison
 # ---------------------------------------------------------------------------
 with tab_cmp:
     if not phases:
@@ -225,10 +225,10 @@ with tab_cmp:
         )
 
 # ---------------------------------------------------------------------------
-# Giornata
+# Single day
 # ---------------------------------------------------------------------------
 def day_series(day: date):
-    """Battito, fasi del sonno e passi tra le 18:00 del giorno prima e la mezzanotte, ora locale."""
+    """Heart rate, sleep stages and steps from 18:00 of the previous day to midnight, local time."""
     shift = datetime.combine(REF_DAY, datetime.min.time()) - datetime.combine(day, datetime.min.time())
     lo = datetime.combine(day - timedelta(days=1), datetime.min.time()) + timedelta(hours=18)
     hr = []
@@ -309,8 +309,8 @@ with tab_ecg:
             e = json.loads(f.read_text(encoding="utf-8")).get("electrocardiogram", {})
             iv = e.get("interval", {})
             t = local(iv["startTime"], iv.get("startUtcOffset")) if iv.get("startTime") else None
-            # Senza startUtcOffset l'API restituisce l'ora LOCALE marcata come "Z" (verificato
-            # sul primo ECG del 15/11/2026: 00:26 "Z" registrato alle 00:26 ora italiana).
+            # Without startUtcOffset the API returns LOCAL time labelled "Z" (verified on the
+            # first ECG of 2026-11-15: 00:26 "Z" recorded at 00:26 Italian time).
             names[f] = f"{t:%d/%m/%Y %H:%M}  –  {e.get('resultClassification', '?')}" if t else f.stem
         f = st.selectbox("Registrazione", files, format_func=names.get)
         e = json.loads(f.read_text(encoding="utf-8"))["electrocardiogram"]
@@ -330,7 +330,7 @@ with tab_ecg:
             st.caption("Griglia: 0.2 s × 0.5 mV. Trascina per scorrere i 30 secondi della registrazione.")
 
 # ---------------------------------------------------------------------------
-# Configurazione fasi ed esclusioni
+# Phases and exclusions configuration
 # ---------------------------------------------------------------------------
 with tab_cfg:
     st.markdown(
